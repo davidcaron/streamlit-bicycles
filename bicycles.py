@@ -26,10 +26,13 @@ def get_data():
         # 2009: "http://donnees.ville.montreal.qc.ca/dataset/f170fecc-18db-44bc-b4fe-5b0b6d2c7297/resource/ee1e9541-939d-429e-919a-8ab94527773c/download/comptagevelo2009.csv",
     }
 
+    # load the counter locations
     counter_locations = pd.read_csv(counter_locations_url, encoding="latin1")
     counter_locations = counter_locations.rename(
         columns={"coord_X": "lon", "coord_Y": "lat"}
     )
+
+    # load the bicycle counts data, and sort it by date
     bicycle_counts = pd.concat(
         [
             pd.read_csv(url, encoding="utf8", parse_dates=["Date"], index_col=0)
@@ -43,12 +46,14 @@ def get_data():
         :, ~bicycle_counts.columns.str.contains("^Unnamed")
     ]
 
+    # sort our data by the name of the counter
     counter_locations = (
         counter_locations.drop("id", axis=1)
         .sort_values(by=["nom_comptage"])
         .reset_index(drop=True)
     )
 
+    # some counter names don't correspond between counter locations and count data
     renames = {
         "Brebeuf": "Brébeuf",
         "CSC": "CSC (Côte Sainte-Catherine)",
@@ -76,13 +81,16 @@ def get_data():
 
 counts_df, bicycle_counts = get_data()
 
-counts_df = counts_df.copy()  # don't modify output from a cached streamlit function
+# don't modify the outputs from a cached streamlit function
+counts_df = counts_df.copy()
 
-bicycle_counts = bicycle_counts.resample("M").mean().sort_index()
+# resample daily data to monthly means
+bicycle_counts = bicycle_counts.resample("M").mean()
 
 years_months_values = [(d.year, d.month) for d in bicycle_counts.index]
 year, month = years_months_values[0]
 
+# Setup presentation widgets
 st.header("Visualization of bicycle counts in Montreal, Qc")
 date_value = st.empty()
 month_slider = st.empty()
